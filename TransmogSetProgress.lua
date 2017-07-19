@@ -195,6 +195,8 @@ function TSP_EventFrame:PLAYER_REGEN_DISABLED(loaded_addon)
 end
 
 function TSP_EventFrame:PLAYER_REGEN_ENABLED(loaded_addon)
-	TSP_SettingsButton:Enable();
+	if TSP_SetsDataProvider then
+		TSP_SetsDataProvider:ClearSets();
+	end
 end
 
