@@ -2,7 +2,7 @@
 ## Title: TransmogSetProgress
 ## Notes: Replaces the wardrobe set progress bars to show progress on the variations and the number of pieces.
 ## Author: LanceDH
-## Version: 7.2.01b
+## Version: 7.2.01c
 ## SavedVariables: TSPDB
 
 TransmogSetProgress.xml

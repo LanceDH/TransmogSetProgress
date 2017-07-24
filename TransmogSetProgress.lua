@@ -161,9 +161,6 @@ end
 
 local TSP_EventFrame = CreateFrame("FRAME", "TSP_EventFrame"); 
 TSP_EventFrame:RegisterEvent("ADDON_LOADED");
-TSP_EventFrame:RegisterEvent("TRANSMOG_COLLECTION_UPDATED");
-TSP_EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
-TSP_EventFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
 TSP_EventFrame:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
 
 function TSP_EventFrame:ADDON_LOADED(loaded)
@@ -177,6 +174,9 @@ function TSP_EventFrame:ADDON_LOADED(loaded)
 		DropDownList1:HookScript("OnShow", HideDropDown)
 		
 		TSP_SetsDataProvider = CreateFromMixins(WardrobeSetsDataProviderMixin);
+		TSP_EventFrame:RegisterEvent("TRANSMOG_COLLECTION_UPDATED");
+		TSP_EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
+		TSP_EventFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
 		
 		TSP_SettingsButton:SetParent(WardrobeCollectionFrame.SetsCollectionFrame);
 		TSP_SettingsButton:SetPoint("TOPRIGHT", WardrobeCollectionFrame, "TOPRIGHT", -11, -35);
@@ -186,7 +186,9 @@ function TSP_EventFrame:ADDON_LOADED(loaded)
 end
 
 function TSP_EventFrame:TRANSMOG_COLLECTION_UPDATED()
-	TSP_SetsDataProvider:ClearSets();
+	if TSP_SetsDataProvider then
+		TSP_SetsDataProvider:ClearSets();
+	end
 end
 
 function TSP_EventFrame:PLAYER_REGEN_DISABLED(loaded_addon)
@@ -195,6 +197,7 @@ function TSP_EventFrame:PLAYER_REGEN_DISABLED(loaded_addon)
 end
 
 function TSP_EventFrame:PLAYER_REGEN_ENABLED(loaded_addon)
+	TSP_SettingsButton:Enable();
 	if TSP_SetsDataProvider then
 		TSP_SetsDataProvider:ClearSets();
 	end
