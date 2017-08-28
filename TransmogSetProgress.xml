@@ -26,8 +26,7 @@
 		</Layers>
 		<Scripts>
 			<OnClick> 
-				PlaySound("igMainMenuOptionCheckBoxOn");
-				<!--PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);-->
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
 				Lib_ToggleDropDownMenu(1, nil, TSP_SettingsDropDown, "TSP_SettingsButton", 50, 15, nil, self, 2);
 			</OnClick>	
 		</Scripts>						
