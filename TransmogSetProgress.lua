@@ -1,6 +1,8 @@
 ﻿local _addonName, _addon = ...;
 
 local TSP = LibStub("AceAddon-3.0"):NewAddon("TransmogSetProgress");
+local ADD = LibStub("AddonDropDown-1.0");
+
 local TSP_SetsDataProvider = nil;
 local TSP_COLORS = {
 			[0] = { [true] = CreateColor(0, 0.75, 0), [false] = CreateColor(0, 0.40, 0)}
@@ -116,7 +118,8 @@ local function UpdateButtons()
 end
 		
 function TSP:InitDropDown(self, level)
-	local info = Lib_UIDropDownMenu_CreateInfo();
+
+	local info = ADD:CreateInfo();
 	info.keepShownOnClick = true;	
 	info.notCheckable = false;
 	info.tooltipWhileDisabled = true;
@@ -129,14 +132,14 @@ function TSP:InitDropDown(self, level)
 	info.func = function(_, _, _, value)
 		TSP.settings.HideCompleted = value;
 		if (value) then
-			Lib_UIDropDownMenu_EnableButton(1, 2);
+			ADD:EnableButton(1, 2);
 		else
-			Lib_UIDropDownMenu_DisableButton(1, 2);
+			ADD:DisableButton(1, 2);
 		end
 		UpdateButtons();
 	end
 	info.checked = function() return TSP.settings.HideCompleted end;
-	Lib_UIDropDownMenu_AddButton(info, level);
+	ADD:AddButton(info, level);
 	
 	-- Align Left
 	info.disabled = not TSP.settings.HideCompleted;
@@ -147,16 +150,18 @@ function TSP:InitDropDown(self, level)
 		UpdateButtons();
 	end
 	info.checked = function() return TSP.settings.AlignLeft end;
-	Lib_UIDropDownMenu_AddButton(info, level);
+	ADD:AddButton(info, level);
 end
 
 local function HideDropDown()
-	Lib_HideDropDownMenu(1);
+	--HideDropDownMenu(1);
 end
 		
 function TSP:OnEnable()
 	self.db = LibStub("AceDB-3.0"):New("TSPDB", TSP_DEFAULTS, true);
 	self.settings = self.db.global;
+	
+	ADD:CreateMenuTemplate("TSP_SettingsDropDown", TSP_SettingsButton);
 end
 
 local TSP_EventFrame = CreateFrame("FRAME", "TSP_EventFrame"); 
@@ -177,11 +182,10 @@ function TSP_EventFrame:ADDON_LOADED(loaded)
 		TSP_EventFrame:RegisterEvent("TRANSMOG_COLLECTION_UPDATED");
 		TSP_EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
 		TSP_EventFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
-		
 		TSP_SettingsButton:SetParent(WardrobeCollectionFrame.SetsCollectionFrame);
 		TSP_SettingsButton:SetPoint("TOPRIGHT", WardrobeCollectionFrame, "TOPRIGHT", -11, -35);
 
-		Lib_UIDropDownMenu_Initialize(TSP_SettingsDropDown, function(self, level) TSP:InitDropDown(self, level) end, "MENU");
+		ADD:Initialize(TSP_SettingsDropDown, function(self, level) TSP:InitDropDown(self, level) end, "MENU");
 	end
 end
 
@@ -193,7 +197,7 @@ end
 
 function TSP_EventFrame:PLAYER_REGEN_DISABLED(loaded_addon)
 	TSP_SettingsButton:Disable();
-	Lib_HideDropDownMenu(1);
+	--HideDropDownMenu(1);
 end
 
 function TSP_EventFrame:PLAYER_REGEN_ENABLED(loaded_addon)
