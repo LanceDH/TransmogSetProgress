@@ -1,4 +1,4 @@
-local MAJOR, MINOR = "AddonDropDownTemplates-1.0", 2
+local MAJOR, MINOR = "AddonDropDownTemplates-1.0", 10
 local ADDT, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not ADDT then return end -- No Upgrade needed.
@@ -103,6 +103,7 @@ function ADDT:CreateButtonTemplate(lib, name, parent, id)
 	local frame = _G[name .. "InvisibleButton"] --CreateFrame("BUTTON", name.."InvisibleButton", button);
 	button.invisibleButton = frame;
 	frame:Hide();
+	frame:RegisterForClicks("AnyUp")
 	frame:SetPoint("TOPLEFT");
 	frame:SetPoint("BOTTOMRIGHT");
 	frame:SetPoint("RIGHT", frameCS, "LEFT");
@@ -122,10 +123,25 @@ function ADDT:CreateButtonTemplate(lib, name, parent, id)
 					GameTooltip_AddNewbieTip(parent, parent.tooltipTitle, 1.0, 1.0, 1.0, parent.tooltipText, 1);
 				end
 			end
+		
+			if (parent.funcEnter) then
+				parent.funcEnter();
+			end
 		end);
 	frame:SetScript("OnLeave", function(self) 
 			lib:StartCounting(self:GetParent():GetParent());
 			GameTooltip:Hide();
+			
+			local parent = self:GetParent();
+			if (parent.funcLeave) then
+				parent.funcLeave();
+			end
+		end);
+	frame:SetScript("OnClick", function(self, button, down) 
+			local parent = self:GetParent();
+			if (parent.funcDisabled) then
+				parent:funcDisabled(button, down);
+			end
 		end);
 	-- End of parentInvisibleButton
 	
@@ -137,7 +153,7 @@ function ADDT:CreateButtonTemplate(lib, name, parent, id)
 			lib:OnClick(self, button, down);
 		end);
 		
-	button:SetScript("OnEnter", function(self) 
+	button:SetScript("OnEnter", function(self, ...) 
 			if ( self.hasArrow ) then
 				local level =  self:GetParent():GetID() + 1;
 				local listFrame = _G["ADD_DropDownList"..level];
@@ -164,6 +180,10 @@ function ADDT:CreateButtonTemplate(lib, name, parent, id)
 				self.Icon:SetTexture(self.mouseOverIcon);
 				self.Icon:Show();
 			end
+			
+			if (self.funcEnter) then
+				self.funcEnter();
+			end
 		end);
 		
 	button:SetScript("OnLeave", function(self) 
@@ -177,6 +197,10 @@ function ADDT:CreateButtonTemplate(lib, name, parent, id)
 				else
 					self.Icon:Hide();
 				end
+			end
+			
+			if (self.funcLeave) then
+				self.funcLeave();
 			end
 		end);
 		
@@ -201,7 +225,7 @@ function ADDT:CreateListTemplate(lib, name, id)
 	button:Hide();
 	
 	-- Backdrop
-	local temp = CreateFrame("Frame", name.."Backdrop", button);
+	local temp = CreateFrame("Frame", name.."Backdrop", button, "BackdropTemplate");
 	temp:SetAllPoints();
 	temp:SetBackdrop( {
 		["bgFile"] = "Interface/DialogFrame/UI-DialogBox-Background-Dark", 
@@ -209,12 +233,12 @@ function ADDT:CreateListTemplate(lib, name, id)
 		["insets"]  = { ["left"] = 11, ["right"] = 11, ["top"] = 11, ["bottom"] = 9 }
 	});
 	-- MenuBackdrop
-	temp = CreateFrame("Frame", name.."MenuBackdrop", button);
+	temp = CreateFrame("Frame", name.."MenuBackdrop", button, "BackdropTemplate");
 	temp:SetAllPoints();
 	temp:SetBackdrop( {
 		["bgFile"] = "Interface/Tooltips/UI-Tooltip-Background", 
 		["edgeFile"] = "Interface/Tooltips/UI-Tooltip-Border", ["tile"] = true, ["tileSize"] = 16, ["edgeSize"] = 16, 
-		["insets"] = { ["left"] = 5, ["right"] = 4, ["top"] = 4, ["bottom"] = 4 }
+		["insets"] = { ["left"] = 4, ["right"] = 4, ["top"] = 4, ["bottom"] = 4 }
 	});
 	
 	temp:SetBackdropBorderColor(TOOLTIP_DEFAULT_COLOR.r, TOOLTIP_DEFAULT_COLOR.g, TOOLTIP_DEFAULT_COLOR.b);
@@ -222,7 +246,7 @@ function ADDT:CreateListTemplate(lib, name, id)
 	
 	-- Menu buttons
 	for i = 1, 8 do
-		local b = self:CreateButtonTemplate(lib, name .. "Button" .. i, button, i)--CreateFrame("BUTTON", name .. "Button" .. i, button, nil, i); -- TODO: Make UIDropDownMenuButtonTemplate
+		self:CreateButtonTemplate(lib, name .. "Button" .. i, button, i)
 	end
 	
 	-- Scripts
@@ -255,43 +279,47 @@ function ADDT:CreateMenuTemplate(lib, name, parent, id, frameType)
 	button:SetSize(40, 32);
 	
 	-- parentLeft
-	local tex = button:CreateTexture(name .. "Left", "ARTWORK");
+	local tex = button:CreateTexture(nil, "ARTWORK");
 	button.Left = tex;
 	tex:SetTexture("Interface/Glues/CharacterCreate/CharacterCreate-LabelFrame");
 	tex:SetSize(25, 64);
-	tex:SetPoint("TOPLEFT", 0, 17);
+	tex:SetPoint("TOPLEFT", -15, 17);
 	tex:SetTexCoord(0, 0.1953125, 0, 1);
-	-- parentMiddle
-	tex = button:CreateTexture(name .. "Middle", "ARTWORK");
-	button.Middle = tex;
-	tex:SetTexture("Interface/Glues/CharacterCreate/CharacterCreate-LabelFrame");
-	tex:SetSize(115, 64);
-	tex:SetPoint("LEFT", button.Left, "RIGHT");
-	tex:SetTexCoord(0.1953125, 0.8046875, 0, 1);
+	
 	-- parentRight
-	tex = button:CreateTexture(name .. "Right", "ARTWORK");
+	tex = button:CreateTexture(nil, "ARTWORK");
 	button.Right = tex;
 	tex:SetTexture("Interface/Glues/CharacterCreate/CharacterCreate-LabelFrame");
 	tex:SetSize(25, 64);
-	tex:SetPoint("LEFT", button.Middle, "RIGHT");
+	tex:SetPoint("TOPRIGHT", 15, 17);
 	tex:SetTexCoord(0.8046875, 1, 0, 1);
+	
+	-- parentMiddle
+	tex = button:CreateTexture(nil, "ARTWORK");
+	button.Middle = tex;
+	tex:SetTexture("Interface/Glues/CharacterCreate/CharacterCreate-LabelFrame");
+	tex:SetPoint("TOPLEFT", button.Left, "TOPRIGHT");
+	tex:SetPoint("BOTTOMRIGHT", button.Right, "BOTTOMLEFT");
+	tex:SetTexCoord(0.1953125, 0.8046875, 0, 1);
+	
 	--parentText
-	local fontString = button:CreateFontString(name.."Text", "ARTWORK");
+	local fontString = button:CreateFontString(nil, "ARTWORK");
 	button.Text = fontString;
 	fontString:SetFontObject(GameFontHighlightSmall);
 	fontString:SetNonSpaceWrap(false);
 	fontString:SetJustifyH("RIGHT");
 	fontString:SetSize(0, 10);
 	fontString:SetPoint("RIGHT", button.Right, "RIGHT", -43, 2);
+	fontString:SetPoint("LEFT", button.Left, "LEFT", 28, 2);
 	--parentIcon
-	tex = button:CreateTexture(name .. "Icon", "OVERLAY");
+	tex = button:CreateTexture(nil, "OVERLAY");
 	button.Icon = tex;
 	tex:Hide();
 	tex:SetSize(16, 16);
 	tex:SetPoint("LEFT", 30, 2);
 	
 	-- parentButton
-	local frame = CreateFrame("BUTTON", name.."Button", button);
+	local frame = CreateFrame("BUTTON", nil, button);
 	button.Button = frame;
 	frame:SetMotionScriptsWhileDisabled(true);
 	frame:SetSize(24, 24);
@@ -339,6 +367,23 @@ function ADDT:CreateMenuTemplate(lib, name, parent, id, frameType)
 	-- End of parentButton
 	
 	button:SetScript("OnHide", function(self) lib:CloseDropDownMenus(); end);
+	
+	button:SetScript("OnEnable", function(self) 
+			button.Text:SetVertexColor(WHITE_FONT_COLOR:GetRGB());
+			button.Button:Enable();
+		end);
+		
+	button:SetScript("OnDisable", function(self) 
+			button.Text:SetVertexColor(DISABLED_FONT_COLOR:GetRGB());
+			button.Button:Disable();
+		end);
+		
+	if (frameType == "BUTTON") then
+		button:SetScript("OnClick", function(self)
+				lib:ToggleDropDownMenu(nil, nil, button);
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+			end);
+	end
 	 
 	return button;
 end
