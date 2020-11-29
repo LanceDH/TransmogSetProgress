@@ -1,8 +1,8 @@
-﻿## Interface: 90001
-## Title: TransmogSetProgress
+﻿## Interface: 90002
+## Title: Transmog Set Progress
 ## Notes: Replaces the wardrobe set progress bars to show progress on the variations and the number of pieces.
 ## Author: LanceDH
-## Version: 9.0.01
+## Version: 9.0.02
 ## SavedVariables: TSPDB
 
 TransmogSetProgress.xml
