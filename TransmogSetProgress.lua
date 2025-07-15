@@ -1,282 +1,436 @@
 ﻿local _addonName, _addon = ...;
 
 local TSP = LibStub("AceAddon-3.0"):NewAddon("TransmogSetProgress");
-local ADD = LibStub("AddonDropDown-2.0");
 
-local TSP_SetsDataProvider = nil;
+local _L = {};
+_L["SETTING_HANDLE_EMPTY_LABEL"] = "Completed Variants";
+_L["SETTING_HANDLE_EMPTY_TOOLTIP"] = "Alter what should be done with set variants that have been completed.";
+_L["SETTING_HANDLE_EMPTY_KEEP_LABEL"] = "Unchanged";
+_L["SETTING_HANDLE_EMPTY_KEEP_TOOLTIP"] = "Keep completed variants as is.";
+_L["SETTING_HANDLE_EMPTY_LEFT_LABEL"] = "Align Left";
+_L["SETTING_HANDLE_EMPTY_LEFT_TOOLTIP"] = "Hide completed variants and align the remaining left.";
+_L["SETTING_HANDLE_EMPTY_SPREAD_LABEL"] = "Stretched";
+_L["SETTING_HANDLE_EMPTY_SPREAD_TOOLTIP"] = "Hide completed variants and stretch the remaining.";
+_L["SETTING_HANDLE_EMPTY_SOLID_LABEL"] = "Solid";
+_L["SETTING_HANDLE_EMPTY_SOLID_TOOLTIP"] = "Replace completed variants with a solid block.";
+_L["SETTING_HANDLE_EMPTY_HIDE_LABEL"] = "Hide";
+_L["SETTING_HANDLE_EMPTY_HIDE_TOOLTIP"] = "Hide completed variants and keep others in place.";
+_L["SETTING_COLOR_LABEL"] = "Variant Colors";
+_L["SETTING_COLOR_TOOLTIP"] = "Define the colors for the individual variant bars.";
+_L["SETTING_COLOR_UNIFORM_LABEL"] = "Green";
+_L["SETTING_COLOR_UNIFORM_TOOLTIP"] = "Color all variants a uniform green.";
+_L["SETTING_COLOR_ADDON_LABEL"] = "Default";
+_L["SETTING_COLOR_ADDON_TOOLTIP"] = "Each variant has a muted version of the default item quality colors.";
+_L["SETTING_COLOR_ITEM_QUALITY_LABEL"] = "Item Quality";
+_L["SETTING_COLOR_ITEM_QUALITY_TOOLTIP"] = "Uses the item quality colors as defined in your accessibility settings.";
+
 local TSP_COLORS = {
-			[0] = { [true] = CreateColor(0, 0.65, 0), [false] = CreateColor(0, 0.40, 0)}
-			,[1] = { [true] = CreateColor(0, 0.65, 0), [false] = CreateColor(0, 0.40, 0)}
-			,[2]  = { [true] = CreateColor(0, 0.5, 0.9), [false] = CreateColor(0, 0.25, 0.40)}
-			,[3]  = { [true] = CreateColor(0.65, 0.4, 0.8), [false] = CreateColor(0.30, 0.2, 0.40)}
-			,[4]  = { [true] = CreateColor(0.75, 0.4, 0), [false] = CreateColor(0.4, 0.2, 0)}
-		}
-TSP_COLORS[PLAYER_DIFFICULTY3] = TSP_COLORS[1] -- LFR
-TSP_COLORS[PLAYER_DIFFICULTY1] = TSP_COLORS[2] -- Normal
-TSP_COLORS[PLAYER_DIFFICULTY2] = TSP_COLORS[3] -- Heroic
-TSP_COLORS[PLAYER_DIFFICULTY6] = TSP_COLORS[4] -- Mythic
+			[0]	= { ["bright"] = CreateColor(0.00, 0.65, 0.00), ["dim"] = CreateColor(0.00, 0.35, 0.00)};
+			[1] = { ["bright"] = CreateColor(0.00, 0.65, 0.00), ["dim"] = CreateColor(0.00, 0.35, 0.00)};
+			[2] = { ["bright"] = CreateColor(0.00, 0.50, 0.90), ["dim"] = CreateColor(0.00, 0.25, 0.40)};
+			[3] = { ["bright"] = CreateColor(0.65, 0.30, 0.80), ["dim"] = CreateColor(0.30, 0.15, 0.40)};
+			[4] = { ["bright"] = CreateColor(0.75, 0.40, 0.00), ["dim"] = CreateColor(0.40, 0.20, 0.00)};
+			[5] = { ["bright"] = CreateColor(0.80, 0.70, 0.45), ["dim"] = CreateColor(0.40, 0.35, 0.25)};
+			[6] = { ["bright"] = CreateColor(0.00, 0.70, 0.90), ["dim"] = CreateColor(0.00, 0.35, 0.45)};
+		};
 
 local n10 = string.format("%s (%s)", RAID_DIFFICULTY1, PLAYER_DIFFICULTY1);
-TSP_COLORS[n10] = TSP_COLORS[1]; -- 10man normal
 local n25 = string.format("%s (%s)", RAID_DIFFICULTY2, PLAYER_DIFFICULTY1);
-TSP_COLORS[n25] = TSP_COLORS[2]; -- 25man normal
 local h10 = string.format("%s (%s)", RAID_DIFFICULTY1, PLAYER_DIFFICULTY2);
-TSP_COLORS[h10] = TSP_COLORS[3]; -- 10man heroic
 local h25 = string.format("%s (%s)", RAID_DIFFICULTY2, PLAYER_DIFFICULTY2);
-TSP_COLORS[h25] = TSP_COLORS[4]; -- 25man heroic
-		
-local ENUM_EMPTY_OPTION = {
-	["keep"] = 1
-	,["left"] = 2
-	,["spread"] =3
-}	
 
-local TPS_DEFAULTS = {
-	global = {	
-		HideCompleted = false;
-		AlignLeft = false; 
-	}   
+local TSP_DESC_TO_COLOR_INDEX = {
+		[PLAYER_DIFFICULTY3] = 1;
+		[PLAYER_DIFFICULTY1] = 2;
+		[PLAYER_DIFFICULTY2] = 3;
+		[PLAYER_DIFFICULTY6] = 4;
+
+		[n10] = 1;
+		[n25] = 2;
+		[h10] = 3;
+		[h25] = 4;
+	};
+
+local ENUM_EMPTY_OPTION = EnumUtil.MakeEnum(
+		"keep",
+		"left",
+		"spread",
+		"solid",
+		"hide"
+	);
+
+local ENUM_COLOR_OPTION = EnumUtil.MakeEnum(
+		"addon",
+		"uniform",
+		"itemQuality"
+	);
+
+local TSP_FAKE_SET_VARIANTS = {
+	{ setID = -1 };
+	{ setID = -2 };
+	{ setID = -3 };
+	{ setID = -4 };
+};
+
+local TSP_FAKE_SET_SOURCE_COUNTS = {
+	[-1] = {
+		numCollected = 4;
+		numTotal = 9;
+	};
+	[-2] = {
+		numCollected = 9;
+		numTotal = 9;
+	};
+	[-3] = {
+		numCollected = 1;
+		numTotal = 9;
+	};
+	[-4] = {
+		numCollected = 5;
+		numTotal = 9;
+	};
+};
+
+local TSP_DEFAULTS = {
+	global = {
+		handleEmpty = ENUM_EMPTY_OPTION.solid;
+		colorType = ENUM_COLOR_OPTION.addon;
+	}
 }
-		
-local function GetOrCreateBarBlock(button, bar, index)
-	local block = bar[index];
-	if not block then 
-		bar[index] = bar:CreateTexture(nil, "ARTWORK");
-		block = bar[index];
+
+local SET_BAR_SPACING = 5;
+local BAR_BLOCK_SPACING = 2;
+local BAR_BLOCK_SPACING_TINY = 1;
+
+local TSP_SetsDataProvider = nil;
+
+
+
+local function WrapperGetSetSourceCounts(setID)
+	if (setID < 0) then
+		local fakeSet = TSP_FAKE_SET_SOURCE_COUNTS[setID] or TSP_FAKE_SET_SOURCE_COUNTS[-1];
+		return fakeSet.numCollected, fakeSet.numTotal;
+	elseif(TSP_SetsDataProvider) then
+		return TSP_SetsDataProvider:GetSetSourceCounts(setID);
 	end
-	return block;
+
+	return 0, 0;
 end
 
-local function GetOrCreateBar(button, index, spacing)
-	if not button.TSPBars then 
-		button.TSPBars = {}; 
+local function WrapperGetVariantSets(setID)
+	if (setID < 0) then
+		return TSP_FAKE_SET_VARIANTS;
+	elseif(TSP_SetsDataProvider) then
+		return TSP_SetsDataProvider:GetVariantSets(setID);
 	end
-	local bar = button.TSPBars[index];
-	if not bar then 
-		bar = CreateFrame("FRAME", "TSP".. button:GetName():match("(%d+)").. "_Bar"..index, button);
-		bar:SetHeight(4);
-		button.TSPBars[index] = bar;
-		
-		if index == 1 then
-			bar:SetPoint("BOTTOMLEFT", button.Background, "BOTTOMLEFT", 2 + spacing/2 , 2);
+
+	return {};
+end
+
+local function OnSetButtonInitialized(source, button, data)
+	if (not data.setID) then return; end
+
+	if (not button.TSPBar) then
+		button.TSPBar = CreateFrame("FRAME", nil, button, "TSP_MainBarTemplate");
+	end
+
+	button.ProgressBar:SetAlpha(0);
+	button.TSPBar:SetupSetByID(data.setID);
+end
+
+local function GetVariantColors(variantData, index)
+	if (TSP.settings.colorType == ENUM_COLOR_OPTION.uniform) then
+		local variantColorData = TSP_COLORS[1];
+		local unlockedR, unlockedG, unlockedB = variantColorData.bright:GetRGB();
+		local lockedR, lockedG, lockedB = variantColorData.dim:GetRGB();
+		return unlockedR, unlockedG, unlockedB, lockedR, lockedG, lockedB;
+	end
+
+	local desc = variantData.description;
+	local colorIndex = TSP_DESC_TO_COLOR_INDEX[desc] or index;
+
+	local variantColorData = TSP_COLORS[colorIndex] or TSP_COLORS[1];
+
+	if (TSP.settings.colorType == ENUM_COLOR_OPTION.itemQuality) then
+		colorIndex = colorIndex + 1;
+		local color = ITEM_QUALITY_COLORS[colorIndex];
+		return color.r, color.g, color.b, color.r * 0.5, color.g * 0.5, color.b * 0.5;
+	end
+
+	local unlockedR, unlockedG, unlockedB = variantColorData.bright:GetRGB();
+	local lockedR, lockedG, lockedB = variantColorData.dim:GetRGB();
+	return unlockedR, unlockedG, unlockedB, lockedR, lockedG, lockedB;
+end
+
+
+
+TSP_PREVIEW_BUTTON_MIXIN = {}
+
+function TSP_PREVIEW_BUTTON_MIXIN:OnLoad()
+	self.IconFrame.Icon:SetTexture(5740527);
+
+	local fakeData = { setID = -1 };
+	OnSetButtonInitialized(nil, self, fakeData);
+end
+
+
+
+TSP_SETTINGS_MIXIN = CreateFromMixins(SettingsControlMixin);
+
+function TSP_SETTINGS_MIXIN:OnLoad()
+	SettingsControlMixin.OnLoad(self);
+
+	self.Tooltip:EnableMouse(false);
+end
+
+
+
+TPS_VARIANT_BAR_MIXIN = {};
+
+function TPS_VARIANT_BAR_MIXIN:OnLoad()
+	self.barBlocks = {};
+end
+
+function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing)
+	for _, block in ipairs(self.barBlocks) do
+		TSP_EventFrame.barBlockPool:Release(block);
+	end
+	wipe(self.barBlocks);
+
+	local numCollected, numTotal = WrapperGetSetSourceCounts(variantData.setID);
+
+	if (numCollected == numTotal) then
+		if (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.solid) then
+			numCollected = 1;
+			numTotal = 1;
+		elseif (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.hide) then
+			return;
+		end
+	end
+
+	local unlockedR, unlockedG, unlockedB, lockedR, lockedG, lockedB = GetVariantColors(variantData, index);
+
+	local totalSpacing = spacing * (numTotal - 1);
+	local availableSpace = self:GetWidth() - totalSpacing;
+	local sizePerBlock = availableSpace / numTotal;
+	
+
+	for i = 1, numTotal, 1 do
+		local frame = TSP_EventFrame.barBlockPool:Acquire();
+		tinsert(self.barBlocks, frame);
+
+		frame:Show();
+		frame:SetWidth(sizePerBlock);
+
+		local isCollected = i <= numCollected;
+		frame.Texture:SetColorTexture(
+				(isCollected and unlockedR or lockedR),
+				(isCollected and unlockedG or lockedG),
+				(isCollected and unlockedB or lockedB)
+			);
+		frame:SetParent(self);
+		frame:ClearAllPoints();
+		if (i == 1) then
+			frame:SetPoint("LEFT", self);
 		else
-			bar:SetPoint("LEFT", button.TSPBars[index-1], "RIGHT", spacing, 0);
-		end
-	end
-	return bar;
-end
-
-local function SetBarProgress(button, index, bar, space, numCollected, numTotal, description)	
-	if (numTotal == 0) then return; end
-	local spacing = 2;
-	local spacePerBlock = (space - spacing * (numTotal)) / numTotal;
-	-- Commence nightmare
-	local ceilFirst = (spacePerBlock - floor(spacePerBlock)) <= 0.5;
-	if (ceilFirst) then
-		spacePerBlock = ceil(spacePerBlock);
-	else
-		spacePerBlock = floor(spacePerBlock);
-	end
-	local otherSpace = space - (spacePerBlock * numTotal);
-	local recalculatedSpacing;
-	if (ceilFirst) then
-		recalculatedSpacing = floor(otherSpace/(numTotal));
-	else
-		recalculatedSpacing = ceil(otherSpace/(numTotal));
-	end
-	-- You made it
-	
-	for i = 1, numTotal do
-		local block = GetOrCreateBarBlock(button, bar, i);
-		local progress = (numCollected == 0 or numTotal == 0) and 0 or numCollected / numTotal;
-		local colorVariant = TSP_COLORS[description] or (description and TSP_COLORS[index] or TSP_COLORS[0]);
-		
-		block:ClearAllPoints();
-		block:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", spacing/2 + ((i-1) * spacePerBlock) + ((i-1) * recalculatedSpacing), 1);
-		block:SetHeight(2);
-	
-		block:SetWidth(spacePerBlock);
-		block:SetColorTexture(colorVariant[i <= numCollected]:GetRGB());
-		block:SetAlpha(1);
-	end
-end
-
-local function SetButtonProgress(button, nrShown, variantIndex, space, numCollected, numTotal, description)
-	local spacing = 4;
-	
-	local bar = GetOrCreateBar(button, nrShown, spacing)
-	local space = space - spacing
-	bar:SetWidth(space);
-	
-	if (TSP.settings.HideCompleted and numCollected == numTotal) then return false; end
-	SetBarProgress(button, variantIndex, bar, space, numCollected, numTotal, description);
-	
-	return true;
-end
-
-local function HideAllBars(button)
-	if not button.TSPBars then return end;
-	for kBar, bar in ipairs(button.TSPBars) do
-		for kBlock, block in ipairs(bar) do
-			block:SetAlpha(0)
+			frame:SetPoint("LEFT", self.barBlocks[i-1], "RIGHT", spacing, 0);
 		end
 	end
 end
 
-local function UpdateButtons()
-	for k, button in ipairs(WardrobeCollectionFrameScrollFrame.buttons) do
-		HideAllBars(button)
-		if (button.setID) then
-			if (not button.TSPBar) then
-				button.TSPBar = CreateFrame("FRAME", nil, button, "TSP_MainBar");
-				button.TSPBar:SetPoint("BOTTOMLEFT", button, 0, 2);
-				button.TSPBar:SetPoint("BOTTOMRIGHT", button, 0, 2);
-				button.TSPBar.variants = {};
-			end
-			
-			wipe(button.TSPBar.variants);
-			button.ProgressBar:SetAlpha(0);
 
-			-- Copy the variants, as we don't want to taint the souce material
-			tAppendAll(button.TSPBar.variants, TSP_SetsDataProvider:GetVariantSets(button.setID))
-			local variantSets = button.TSPBar.variants
-			
 
-			for i = #variantSets, 1, -1  do
-				local desc = variantSets[i].description;
-				if (not TSP_COLORS[desc]) then
-					variantSets[i].description = i;
-				end
-				 
-				if (TSP.settings.HideCompleted and TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.spread) then
-					local numCollected, numTotal = TSP_SetsDataProvider:GetSetSourceCounts(variantSets[i].setID);
-					if (numCollected == numTotal) then
-						table.remove(variantSets, i);
-					end
-				end
-			end
-			
-			
-			local splitWidth = floor(button:GetWidth())-4;
-			if #variantSets > 0 then
-				splitWidth = (splitWidth) / #variantSets;
-				local index = 1;
-				for i = 1, #variantSets do
-					local numCollected, numTotal = TSP_SetsDataProvider:GetSetSourceCounts(variantSets[i].setID);
-					local setup = SetButtonProgress(button, index, i, splitWidth, numCollected, numTotal, variantSets[i].description);
-					if (setup or TSP.settings.handleEmpty ~= ENUM_EMPTY_OPTION.left) then
-						index = index + 1;
-					end
-				end
-			else
-				local numCollected, numTotal = TSP_SetsDataProvider:GetSetSourceCounts(button.setID);
-				SetButtonProgress(button, 1, 1, splitWidth, numCollected, numTotal);
+TPS_MAINBAR_MIXIN = {};
+
+function TPS_MAINBAR_MIXIN:OnLoad()
+	self.variants = {};
+	self.setFrames = {};
+end
+
+function TPS_MAINBAR_MIXIN:SetupSetByID(setID)
+	for _, frame in ipairs(self.setFrames) do
+		TSP_EventFrame.variantBarPool:Release(frame);
+	end
+	wipe(self.setFrames);
+
+	-- We move the entries to our own list so that we don't affect the table in the dataprovider
+	wipe(self.variants);
+	tAppendAll(self.variants, WrapperGetVariantSets(setID));
+
+	if (#self.variants == 0) then
+		local baseSet = TSP_SetsDataProvider:GetBaseSetByID(setID);
+		tinsert(self.variants, baseSet);
+	end
+
+	local numVariants = #self.variants;
+	if (numVariants == 0) then return; end
+
+
+	if (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.left or TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.spread) then
+		for i = numVariants, 1, -1 do
+			local variantData = self.variants[i];
+			local numCollected, numTotal = WrapperGetSetSourceCounts(variantData.setID);
+			if (numCollected == numTotal) then
+				tremove(self.variants, i);
 			end
 		end
-		button.Label:ClearAllPoints();
-		button.Label:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 6, 7);
-	end
-end
 		
-local function InitDropDown(ddFrame)
-	local info = ddFrame:CreateButtonInfo("checkbox");
+		if (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.spread) then
+			numVariants = #self.variants;
+		end
+	end
 
-	-- Hide Completed
-	info.text = "Hide Completed";
-	info.tooltipTitle = "Hide Completed";
-	info.tooltipText = "Hides progress bar for completed set variants.";
-	info.func = function(_, _, _, value)
-		TSP.settings.HideCompleted = value;
-		ddFrame:Refresh();
-		UpdateButtons();
-	end
-	info.checked = function() return TSP.settings.HideCompleted end;
-	ddFrame:AddButton(info);
-	
-	info = ddFrame:CreateButtonInfo("radio");
-	-- Spread it like butter
-	info.disabled = function() return not TSP.settings.HideCompleted end;
-	info.text = "Unchanged";
-	info.tooltipTitle = "Unchanged";
-	info.tooltipText = "Keep remaining bars in their original position.";
-	info.func = function(_, _, _, value)
-		if (value) then
-			TSP.settings.handleEmpty = ENUM_EMPTY_OPTION.keep;
-			ddFrame:Refresh();
-			UpdateButtons();
+	local totalSpacing = SET_BAR_SPACING * (numVariants - 1);
+	local availableSpace = self:GetWidth() - totalSpacing;
+	local sizePerSetFrame = availableSpace / numVariants;
+
+	local spacing = numVariants > 3 and BAR_BLOCK_SPACING_TINY or BAR_BLOCK_SPACING;
+
+	for i = 1, #self.variants, 1 do
+		local frame = TSP_EventFrame.variantBarPool:Acquire();
+		frame:Show();
+		frame:SetWidth(sizePerSetFrame);
+		frame:SetParent(self);
+		frame:ClearAllPoints();
+		if (i == 1) then
+			frame:SetPoint("LEFT", self);
+		else
+			frame:SetPoint("LEFT", self.setFrames[i-1], "RIGHT", SET_BAR_SPACING, 0);
 		end
+
+		frame:SetupVariant(self.variants[i], i, spacing);
+
+		tinsert(self.setFrames, frame);
 	end
-	
-	info.checked = function() return TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.keep; end;
-	ddFrame:AddButton(info)
-	
-	-- Align Left
-	info.disabled = function() return not TSP.settings.HideCompleted end;
-	info.text = "Align Left";
-	info.tooltipTitle = "Align Left";
-	info.tooltipText = "Aligns progress bars to the left if any bars before it are hidden.";
-	info.func = function(_, _, _, value)
-		if (value) then
-			TSP.settings.handleEmpty = ENUM_EMPTY_OPTION.left;
-			ddFrame:Refresh();
-			UpdateButtons();
-		end
-	end
-	info.checked = function() return TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.left; end;
-	ddFrame:AddButton(info);
-	
-	-- Spread it like butter
-	info.disabled = function() return not TSP.settings.HideCompleted end;
-	info.text = "Spread";
-	info.tooltipTitle = "Spread";
-	info.tooltipText = "Fills up the empty space with the remaining bars.";
-	info.func = function(_, _, _, value)
-		if (value) then
-			TSP.settings.handleEmpty = ENUM_EMPTY_OPTION.spread;
-			ddFrame:Refresh();
-			UpdateButtons();
-		end
-	end
-	
-	info.checked = function() return TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.spread; end;
-	ddFrame:AddButton(info);
+
 end
-		
+
+
+
 function TSP:OnEnable()
 	self.db = LibStub("AceDB-3.0"):New("TSPDB", TSP_DEFAULTS, true);
 	self.settings = self.db.global;
 	
-	local currentVersion = GetAddOnMetadata(_addonName, "version");
-	
-	if (not self.settings.handleEmpty) then
-		self.settings.handleEmpty = ENUM_EMPTY_OPTION.keep;
+
+	if (self.settings.version < "11.1.01") then
+		if (self.settings.AlignLeft) then
+			
+			self.settings.handleEmpty = ENUM_EMPTY_OPTION.left;
+		end
+
+		self.settings.AlignLeft = nil;
+		self.settings.HideCompleted = nil;
 	end
 	
-	if (self.settings.AlignLeft) then
-		self.settings.AlignLeft = false;
-		self.settings.handleEmpty = ENUM_EMPTY_OPTION.left;
+	self.settings.version = C_AddOns.GetAddOnMetadata(_addonName, "version");
+
+
+	local _, _addonTitle = C_AddOns.GetAddOnInfo(_addonName);
+	local category, layout = Settings.RegisterVerticalLayoutCategory(_addonTitle);
+
+	-- Example previes
+	local fakeTable = {};
+	local previewFakeSettings = Settings.RegisterAddOnSetting(
+					category,
+					"TSP_PreviewFake",
+					"fake",
+					fakeTable,
+					Settings.VarType.Boolean,
+					"",
+					Settings.Default.False);
+	previewFakeSettings:SetValueChangedCallback(function(setting, value) end);
+
+	local previewInitializer = Settings.CreateControlInitializer("TSP_SettingsPreviewTemplate", previewFakeSettings, nil, nil);
+	layout:AddInitializer(previewInitializer);
+
+	local function ReloadPreviewButton()
+		TSP_FakePreviewButton:OnLoad();
 	end
+
+	-- handleEmpty
+	local handleEmptySetting = Settings.RegisterAddOnSetting(
+					category,
+					"TSP_HANDLE_EMPTY",
+					"handleEmpty",
+					self.settings,
+					Settings.VarType.Number,
+					_L["SETTING_HANDLE_EMPTY_LABEL"],
+					ENUM_EMPTY_OPTION.solid);
 	
-	self.settings.version = currentVersion;
+	handleEmptySetting:SetValueChangedCallback(ReloadPreviewButton);
+
+	local function GetHandleEmptyOptions()
+		local container = Settings.CreateControlTextContainer();
+		container:Add(ENUM_EMPTY_OPTION.keep, _L["SETTING_HANDLE_EMPTY_KEEP_LABEL"], _L["SETTING_HANDLE_EMPTY_KEEP_TOOLTIP"]);
+		container:Add(ENUM_EMPTY_OPTION.solid, _L["SETTING_HANDLE_EMPTY_SOLID_LABEL"], _L["SETTING_HANDLE_EMPTY_SOLID_TOOLTIP"]);
+		container:Add(ENUM_EMPTY_OPTION.hide, _L["SETTING_HANDLE_EMPTY_HIDE_LABEL"], _L["SETTING_HANDLE_EMPTY_HIDE_TOOLTIP"]);
+		container:Add(ENUM_EMPTY_OPTION.left, _L["SETTING_HANDLE_EMPTY_LEFT_LABEL"], _L["SETTING_HANDLE_EMPTY_LEFT_TOOLTIP"]);
+		container:Add(ENUM_EMPTY_OPTION.spread, _L["SETTING_HANDLE_EMPTY_SPREAD_LABEL"], _L["SETTING_HANDLE_EMPTY_SPREAD_TOOLTIP"]);
+		return container:GetData();
+	end
+
+	Settings.CreateDropdown(category, handleEmptySetting, GetHandleEmptyOptions, _L["SETTING_HANDLE_EMPTY_TOOLTIP"]);
+
+	-- colors
+	local colorsSetting = Settings.RegisterAddOnSetting(
+					category,
+					"TSP_COLOR_TYPE",
+					"colorType",
+					self.settings,
+					Settings.VarType.Number,
+					_L["SETTING_COLOR_LABEL"],
+					ENUM_COLOR_OPTION.addon);
+	
+	colorsSetting:SetValueChangedCallback(ReloadPreviewButton);
+
+	local function GetColorsOptions()
+		local container = Settings.CreateControlTextContainer();
+		container:Add(ENUM_COLOR_OPTION.addon, _L["SETTING_COLOR_ADDON_LABEL"], _L["SETTING_COLOR_ADDON_TOOLTIP"]);
+		container:Add(ENUM_COLOR_OPTION.itemQuality, _L["SETTING_COLOR_ITEM_QUALITY_LABEL"], _L["SETTING_COLOR_ITEM_QUALITY_TOOLTIP"]);
+		container:Add(ENUM_COLOR_OPTION.uniform, _L["SETTING_COLOR_UNIFORM_LABEL"], _L["SETTING_COLOR_UNIFORM_TOOLTIP"]);
+		return container:GetData();
+	end
+
+	Settings.CreateDropdown(category, colorsSetting, GetColorsOptions, _L["SETTING_COLOR_TOOLTIP"]);
+	Settings.RegisterAddOnCategory(category);
+
+	-- Update in case accessibility colors were changed
+	EventRegistry:RegisterCallback(
+		"Settings.CategoryChanged",
+		function(source, newCategory)
+				if (newCategory == category) then
+					ReloadPreviewButton();
+				end
+			end,
+		self);
+end
+
+local function BarBlockResetFunc(pool, block, new)
+	if (new) then return; end
+	block:Hide();
+end
+
+local function VariantBarResetFunc(pool, bar, new)
+	if (new) then return; end
+	bar:Hide();
 end
 
 local TSP_EventFrame = CreateFrame("FRAME", "TSP_EventFrame"); 
 TSP_EventFrame:RegisterEvent("ADDON_LOADED");
 TSP_EventFrame:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
+TSP_EventFrame.variantBarPool = CreateSecureFramePool("Frame", TSP_EventFrame, "TSP_VariantBarTemplate", VariantBarResetFunc);
+TSP_EventFrame.barBlockPool = CreateSecureFramePool("Frame", TSP_EventFrame, "TSP_BarBlockTemplate", BarBlockResetFunc);
 
 function TSP_EventFrame:ADDON_LOADED(loaded)
 	if (loaded == "Blizzard_Collections") then
-		hooksecurefunc(WardrobeCollectionFrameScrollFrame, "Update", UpdateButtons);
-		hooksecurefunc(WardrobeCollectionFrameScrollFrame, "update", UpdateButtons);
-		
-		TSP_SetsDataProvider = CreateFromMixins(WardrobeSetsDataProviderMixin);
-		TSP_EventFrame:RegisterEvent("TRANSMOG_COLLECTION_UPDATED");
-		TSP_EventFrame:RegisterEvent("PLAYER_REGEN_DISABLED");
-		TSP_EventFrame:RegisterEvent("PLAYER_REGEN_ENABLED");
-		TSP_SettingsButton:SetParent(WardrobeCollectionFrame.SetsCollectionFrame);
-		TSP_SettingsButton:SetPoint("TOPRIGHT", WardrobeCollectionFrame, "TOPRIGHT", -11, -35);
+		local scrollbox = WardrobeCollectionFrame.SetsCollectionFrame.ListContainer.ScrollBox;
+		scrollbox.view:RegisterCallback(ScrollBoxListViewMixin.Event.OnInitializedFrame, OnSetButtonInitialized, self);
 
-		ADD:LinkDropDown(TSP_SettingsButton, InitDropDown);
+		TSP_SetsDataProvider = CreateFromMixins(WardrobeSetsDataProviderMixin);
+
+		TSP_EventFrame:RegisterEvent("TRANSMOG_COLLECTION_UPDATED");
+		
+		TSP_EventFrame:UnregisterEvent("ADDON_LOADED");
 	end
 end
 
@@ -285,15 +439,3 @@ function TSP_EventFrame:TRANSMOG_COLLECTION_UPDATED()
 		TSP_SetsDataProvider:ClearSets();
 	end
 end
-
-function TSP_EventFrame:PLAYER_REGEN_DISABLED(loaded_addon)
-	TSP_SettingsButton:Disable();
-end
-
-function TSP_EventFrame:PLAYER_REGEN_ENABLED(loaded_addon)
-	TSP_SettingsButton:Enable();
-	if TSP_SetsDataProvider then
-		TSP_SetsDataProvider:ClearSets();
-	end
-end
-

@@ -5,26 +5,16 @@
 	<Script file="Libs\LibStub\LibStub.lua"/>
 	<Include file="libs\AceAddon-3.0\AceAddon-3.0.xml"/>
 	<Include file="libs\AceDB-3.0\AceDB-3.0.xml"/>
-	<Include file="libs\AddonDropDown-2.0\AddonDropDown-2.0.xml"/>
-	<Script file="TransmogSetProgress.lua"/>
 
-	<Button name="TSP_SettingsButton" inherits="UIMenuButtonStretchTemplate" text="TSP" frameStrata="HIGH">
-		<Size x="60" y="22"/>
-		<Layers>
-			<Layer level="ARTWORK">
-				<Texture parentKey="Icon" file="Interface\ChatFrame\ChatFrameExpandArrow">
-					<Size x="10" y="12"/>
-					<Anchors>
-						<Anchor point="RIGHT" relativeKey="$parent.Right" relativePoint="RIGHT" x="-5"/>
-					</Anchors>
-				</Texture>
-			</Layer>
-		</Layers>				
-	</Button>
+	<Script file="TransmogSetProgress.lua"/>
 	
-	<Frame name="TSP_MainBar" virtual="true">
-		<Size y="4"/>
-		
+	<Frame name="TSP_MainBarTemplate" mixin="TPS_MAINBAR_MIXIN" virtual="true">
+		<Size x="50" y="4"/>
+		<Anchors>
+			<Anchor point="LEFT" x="4" />
+			<Anchor point="RIGHT" x="-4" />
+			<Anchor point="BOTTOM" y="1" />
+		</Anchors>
 		<Layers>
 			<Layer level="BACKGROUND">
 				<Texture parentKey="BGLeft" file="Interface\QuestFrame\ObjectiveTracker">
@@ -54,6 +44,100 @@
 					<TexCoords left="0.735" right="0.735" top="0.421875" bottom="0.453125"/>
 				</Texture>
 			</Layer>
-		</Layers>		
+		</Layers>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="TSP_VariantBarTemplate" mixin="TPS_VARIANT_BAR_MIXIN" virtual="true">
+		<Size y="2"/>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="TSP_BarBlockTemplate" virtual="true">
+		<Size y="2"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Texture" setAllPoints="true" texelSnappingBias="0.0" snapToPixelGrid="false">
+					<Color r="1" g="1" b="1"/>
+				</Texture>
+			</Layer>
+		</Layers>
+	</Frame>
+
+	<Frame name="TSP_SettingsPreviewTemplate" inherits="SettingsListElementTemplate" mixin="TSP_SETTINGS_MIXIN" virtual="true">
+		<Size x="300" y="50" />
+		<Anchors>
+			<Anchor point="LEFT"/>
+		</Anchors>
+		<Frames>
+			<Button name="TSP_FakePreviewButton" parentKey="PreviewButton" mixin="TSP_PREVIEW_BUTTON_MIXIN">
+				<Size x="208" y="46" />
+				<Anchors>
+					<Anchor point="TOP" x="84"/>
+				</Anchors>
+				<Frames>
+					<Frame parentKey="IconFrame">
+						<Size x="38" y="38" />
+						<Anchors>
+							<Anchor point="LEFT" x="-42" y="0" />
+						</Anchors>
+						<Layers>
+							<Layer level="ARTWORK">
+								<Texture parentKey="Icon" setAllPoints="true" file="6352166"/>
+							</Layer>
+						</Layers>
+					</Frame>
+				</Frames>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<Texture atlas="PetList-ButtonBackground" parentKey="Background" />
+					</Layer>
+					<Layer level="ARTWORK">
+						<FontString parentKey="Name" inherits="GameFontNormal" justifyH="LEFT" maxLines="2" text="Ageless Serpent's Foresight">
+							<Size x="190" y="0" />
+							<Anchors>
+								<Anchor point="LEFT" x="6" y="6" />
+							</Anchors>
+						</FontString>
+						<FontString parentKey="Label" inherits="GameFontDisableSmallLeft" justifyH="LEFT" maxLines="1" text="Liberation of Undermine">
+							<Size x="190" y="0" />
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeKey="$parent.Name" relativePoint="BOTTOMLEFT" x="0" y="-2" />
+							</Anchors>
+							<Color r="0.329" g="0.329" b="0.329" />
+						</FontString>
+						<Texture parentKey="ProgressBar">
+							<Size x="204" y="2" />
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeKey="$parent.Background" relativePoint="BOTTOMLEFT" x="2" y="4" />
+							</Anchors>
+							<Color r="0.0118" g="0.247" b="0.00392" a="1" />
+						</Texture>
+					</Layer>
+					<Layer level="OVERLAY">
+						<Texture parentKey="SelectedTexture" atlas="PetList-ButtonSelect" hidden="true" />
+						<Texture parentKey="New" atlas="GarrMission-AbilityHighlight" alphaMode="ADD" hidden="true">
+							<Size x="56" y="56" />
+							<Anchors>
+								<Anchor point="CENTER" relativeKey="$parent.IconFrame" />
+							</Anchors>
+						</Texture>
+					</Layer>
+					<Layer level="HIGHLIGHT">
+						<Texture parentKey="HighlightTexture" atlas="PetList-ButtonHighlight" setAllPoints="true" />
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnLoad method="OnLoad" />
+				</Scripts>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
 	</Frame>
  </Ui>
