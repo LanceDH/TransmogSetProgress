@@ -16,21 +16,23 @@
 			<Anchor point="BOTTOM" y="1" />
 		</Anchors>
 		<Layers>
-			<Layer level="BACKGROUND">
+			<Layer level="BACKGROUND" textureSubLevel="2">
 				<Texture parentKey="BGLeft" file="Interface\QuestFrame\ObjectiveTracker">
-					<Size x="16"/>
+					<Size x="8"/>
 					<Anchors>
-						<Anchor point="TOPLEFT" x="-1"/>
-						<Anchor point="BOTTOMLEFT" x="-1"/>
+						<Anchor point="TOP"/>
+						<Anchor point="BOTTOM"/>
+						<Anchor point="LEFT" x="-3"/>
 					</Anchors>
 					<Color r="0" b="0" g="0" a="1"/>
 					<TexCoords left="0.587890625" right="0.73815" top="0.421875" bottom="0.453125"/>
 				</Texture>
 				<Texture parentKey="BGRight" file="Interface\QuestFrame\ObjectiveTracker">
-					<Size x="16"/>
+					<Size x="8"/>
 					<Anchors>
-						<Anchor point="TOPRIGHT" x="1"/>
-						<Anchor point="BOTTOMRIGHT" x="1"/>
+						<Anchor point="TOP" />
+						<Anchor point="BOTTOM" />
+						<Anchor point="RIGHT" x="3" />
 					</Anchors>
 					<Color r="0" b="0" g="0" a="1"/>
 					<TexCoords left="0.73815" right="0.888671875" top="0.421875" bottom="0.453125"/>
@@ -60,7 +62,7 @@
 	<Frame name="TSP_BarBlockTemplate" virtual="true">
 		<Size y="2"/>
 		<Layers>
-			<Layer level="BACKGROUND">
+			<Layer level="ARTWORK">
 				<Texture parentKey="Texture" setAllPoints="true" texelSnappingBias="0.0" snapToPixelGrid="false">
 					<Color r="1" g="1" b="1"/>
 				</Texture>
@@ -110,22 +112,9 @@
 							</Anchors>
 							<Color r="0.329" g="0.329" b="0.329" />
 						</FontString>
-						<Texture parentKey="ProgressBar">
-							<Size x="204" y="2" />
-							<Anchors>
-								<Anchor point="TOPLEFT" relativeKey="$parent.Background" relativePoint="BOTTOMLEFT" x="2" y="4" />
-							</Anchors>
-							<Color r="0.0118" g="0.247" b="0.00392" a="1" />
-						</Texture>
 					</Layer>
 					<Layer level="OVERLAY">
 						<Texture parentKey="SelectedTexture" atlas="PetList-ButtonSelect" hidden="true" />
-						<Texture parentKey="New" atlas="GarrMission-AbilityHighlight" alphaMode="ADD" hidden="true">
-							<Size x="56" y="56" />
-							<Anchors>
-								<Anchor point="CENTER" relativeKey="$parent.IconFrame" />
-							</Anchors>
-						</Texture>
 					</Layer>
 					<Layer level="HIGHLIGHT">
 						<Texture parentKey="HighlightTexture" atlas="PetList-ButtonHighlight" setAllPoints="true" />
@@ -133,6 +122,7 @@
 				</Layers>
 				<Scripts>
 					<OnLoad method="OnLoad" />
+					<OnClick method="OnClick" />
 				</Scripts>
 			</Button>
 		</Frames>

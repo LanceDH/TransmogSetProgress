@@ -23,6 +23,8 @@ _L["SETTING_COLOR_ADDON_LABEL"] = "Default";
 _L["SETTING_COLOR_ADDON_TOOLTIP"] = "Each variant has a muted version of the default item quality colors.";
 _L["SETTING_COLOR_ITEM_QUALITY_LABEL"] = "Item Quality";
 _L["SETTING_COLOR_ITEM_QUALITY_TOOLTIP"] = "Uses the item quality colors as defined in your accessibility settings.";
+_L["SETTING_BAR_HIGHLIGHT_LABEL"] = "Bar Over Highlight";
+_L["SETTING_BAR_HIGHLIGHT_Tooltip"] = "Show the progress bar should over the button's highlight texture.";
 
 local TSP_COLORS = {
 			[0]	= { ["bright"] = CreateColor(0.00, 0.65, 0.00), ["dim"] = CreateColor(0.00, 0.35, 0.00)};
@@ -95,6 +97,7 @@ local TSP_DEFAULTS = {
 	global = {
 		handleEmpty = ENUM_EMPTY_OPTION.solid;
 		colorType = ENUM_COLOR_OPTION.addon;
+		barOverHighlight = false;
 	}
 }
 
@@ -134,8 +137,14 @@ local function OnSetButtonInitialized(source, button, data)
 		button.TSPBar = CreateFrame("FRAME", nil, button, "TSP_MainBarTemplate");
 	end
 
+	local frameLevel = button:GetFrameLevel();
+	if (TSP.settings.barOverHighlight) then
+		frameLevel = frameLevel + 1;
+	end
+	button.TSPBar:SetFrameLevel(frameLevel);
+
 	button.ProgressBar:SetAlpha(0);
-	button.TSPBar:SetupSetByID(data.setID);
+	button.TSPBar:SetupSetByID(data.setID, frameLevel);
 end
 
 local function GetVariantColors(variantData, index)
@@ -173,7 +182,9 @@ function TSP_PREVIEW_BUTTON_MIXIN:OnLoad()
 	OnSetButtonInitialized(nil, self, fakeData);
 end
 
-
+function TSP_PREVIEW_BUTTON_MIXIN:OnClick()
+	self.SelectedTexture:SetShown(not self.SelectedTexture:IsShown());
+end
 
 TSP_SETTINGS_MIXIN = CreateFromMixins(SettingsControlMixin);
 
@@ -191,12 +202,7 @@ function TPS_VARIANT_BAR_MIXIN:OnLoad()
 	self.barBlocks = {};
 end
 
-function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing)
-	for _, block in ipairs(self.barBlocks) do
-		TSP_EventFrame.barBlockPool:Release(block);
-	end
-	wipe(self.barBlocks);
-
+function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing, frameLevel)
 	local numCollected, numTotal = WrapperGetSetSourceCounts(variantData.setID);
 
 	if (numCollected == numTotal) then
@@ -204,8 +210,18 @@ function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing)
 			numCollected = 1;
 			numTotal = 1;
 		elseif (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.hide) then
+			for _, block in ipairs(self.barBlocks) do
+				TSP_EventFrame.barBlockPool:Release(block);
+			end
+			wipe(self.barBlocks);
 			return;
 		end
+	end
+
+	for i = #self.barBlocks, numTotal + 1, -1 do
+		local block = self.barBlocks[i];
+		TSP_EventFrame.barBlockPool:Release(block);
+		tremove(self.barBlocks, i);
 	end
 
 	local unlockedR, unlockedG, unlockedB, lockedR, lockedG, lockedB = GetVariantColors(variantData, index);
@@ -216,8 +232,13 @@ function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing)
 	
 
 	for i = 1, numTotal, 1 do
-		local frame = TSP_EventFrame.barBlockPool:Acquire();
-		tinsert(self.barBlocks, frame);
+		local frame = self.barBlocks[i];
+		if (not frame) then
+			frame = TSP_EventFrame.barBlockPool:Acquire();
+			frame:SetFrameLevel(frameLevel);
+			
+			tinsert(self.barBlocks, frame);
+		end
 
 		frame:Show();
 		frame:SetWidth(sizePerBlock);
@@ -235,6 +256,10 @@ function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing)
 		else
 			frame:SetPoint("LEFT", self.barBlocks[i-1], "RIGHT", spacing, 0);
 		end
+
+		if (not TSP.settings.barOverHighlight) then
+			frame:SetFrameLevel(frameLevel);
+		end
 	end
 end
 
@@ -247,12 +272,7 @@ function TPS_MAINBAR_MIXIN:OnLoad()
 	self.setFrames = {};
 end
 
-function TPS_MAINBAR_MIXIN:SetupSetByID(setID)
-	for _, frame in ipairs(self.setFrames) do
-		TSP_EventFrame.variantBarPool:Release(frame);
-	end
-	wipe(self.setFrames);
-
+function TPS_MAINBAR_MIXIN:SetupSetByID(setID, frameLevel)
 	-- We move the entries to our own list so that we don't affect the table in the dataprovider
 	wipe(self.variants);
 	tAppendAll(self.variants, WrapperGetVariantSets(setID));
@@ -262,12 +282,12 @@ function TPS_MAINBAR_MIXIN:SetupSetByID(setID)
 		tinsert(self.variants, baseSet);
 	end
 
-	local numVariants = #self.variants;
-	if (numVariants == 0) then return; end
-
+	-- In case of ENUM_EMPTY_OPTION.left we might want to act like there are more bars than we'll actually show
+	local numBarsToShow = #self.variants;
+	if (numBarsToShow == 0) then return; end
 
 	if (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.left or TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.spread) then
-		for i = numVariants, 1, -1 do
+		for i = numBarsToShow, 1, -1 do
 			local variantData = self.variants[i];
 			local numCollected, numTotal = WrapperGetSetSourceCounts(variantData.setID);
 			if (numCollected == numTotal) then
@@ -276,18 +296,29 @@ function TPS_MAINBAR_MIXIN:SetupSetByID(setID)
 		end
 		
 		if (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.spread) then
-			numVariants = #self.variants;
+			numBarsToShow = #self.variants;
 		end
 	end
 
-	local totalSpacing = SET_BAR_SPACING * (numVariants - 1);
-	local availableSpace = self:GetWidth() - totalSpacing;
-	local sizePerSetFrame = availableSpace / numVariants;
+	for i = #self.setFrames, #self.variants + 1, -1 do
+		local frame = self.setFrames[i];
+		TSP_EventFrame.variantBarPool:Release(frame);
+		tremove(self.setFrames, i);
+	end
 
-	local spacing = numVariants > 3 and BAR_BLOCK_SPACING_TINY or BAR_BLOCK_SPACING;
+	local totalSpacing = SET_BAR_SPACING * (numBarsToShow - 1);
+	local availableSpace = self:GetWidth() - totalSpacing;
+	local sizePerSetFrame = availableSpace / numBarsToShow;
+
+	local spacing = numBarsToShow > 3 and BAR_BLOCK_SPACING_TINY or BAR_BLOCK_SPACING;
 
 	for i = 1, #self.variants, 1 do
-		local frame = TSP_EventFrame.variantBarPool:Acquire();
+		local frame = self.setFrames[i];
+		if (not frame) then
+			frame = TSP_EventFrame.variantBarPool:Acquire();
+			tinsert(self.setFrames, frame);
+		end
+
 		frame:Show();
 		frame:SetWidth(sizePerSetFrame);
 		frame:SetParent(self);
@@ -298,11 +329,11 @@ function TPS_MAINBAR_MIXIN:SetupSetByID(setID)
 			frame:SetPoint("LEFT", self.setFrames[i-1], "RIGHT", SET_BAR_SPACING, 0);
 		end
 
-		frame:SetupVariant(self.variants[i], i, spacing);
-
-		tinsert(self.setFrames, frame);
+		if (not TSP.settings.barOverHighlight) then
+			frame:SetFrameLevel(frameLevel);
+		end
+		frame:SetupVariant(self.variants[i], i, spacing, frameLevel);
 	end
-
 end
 
 
@@ -355,7 +386,7 @@ function TSP:OnEnable()
 					self.settings,
 					Settings.VarType.Number,
 					_L["SETTING_HANDLE_EMPTY_LABEL"],
-					ENUM_EMPTY_OPTION.solid);
+					TSP_DEFAULTS.global.handleEmpty);
 	
 	handleEmptySetting:SetValueChangedCallback(ReloadPreviewButton);
 
@@ -379,7 +410,7 @@ function TSP:OnEnable()
 					self.settings,
 					Settings.VarType.Number,
 					_L["SETTING_COLOR_LABEL"],
-					ENUM_COLOR_OPTION.addon);
+					TSP_DEFAULTS.global.colorType);
 	
 	colorsSetting:SetValueChangedCallback(ReloadPreviewButton);
 
@@ -392,6 +423,21 @@ function TSP:OnEnable()
 	end
 
 	Settings.CreateDropdown(category, colorsSetting, GetColorsOptions, _L["SETTING_COLOR_TOOLTIP"]);
+
+	-- barLevel
+	local barOverHighlightSetting = Settings.RegisterAddOnSetting(
+					category,
+					"TSP_BAR_OVER_HIGHLIGHT",
+					"barOverHighlight",
+					self.settings,
+					Settings.VarType.Boolean,
+					_L["SETTING_BAR_HIGHLIGHT_LABEL"],
+					TSP_DEFAULTS.global.barOverHighlight);
+	
+	barOverHighlightSetting:SetValueChangedCallback(ReloadPreviewButton);
+
+	Settings.CreateCheckbox(category, barOverHighlightSetting, _L["SETTING_BAR_HIGHLIGHT_Tooltip"]);
+
 	Settings.RegisterAddOnCategory(category);
 
 	-- Update in case accessibility colors were changed
