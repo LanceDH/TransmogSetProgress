@@ -112,6 +112,7 @@
 							</Anchors>
 							<Color r="0.329" g="0.329" b="0.329" />
 						</FontString>
+						<Texture parentKey="ProgressBar" hidden="true" />
 					</Layer>
 					<Layer level="OVERLAY">
 						<Texture parentKey="SelectedTexture" atlas="PetList-ButtonSelect" hidden="true" />
