@@ -3,7 +3,8 @@
 ## Notes: Replaces the wardrobe set progress bars to show progress on the variations and the number of pieces.
 ## IconAtlas: transmog-nav-slot-shirt
 ## Author: LanceDH
-## Version: 11.1.01
+## Version: 11.1.02
 ## SavedVariables: TSPDB
 
 TransmogSetProgress.xml
+External\External.xml

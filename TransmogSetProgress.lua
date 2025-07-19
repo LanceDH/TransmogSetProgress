@@ -29,7 +29,7 @@ _L["SETTING_BAR_HIGHLIGHT_Tooltip"] = "Show the progress bar should over the but
 local TSP_COLORS = {
 			[0]	= { ["bright"] = CreateColor(0.00, 0.65, 0.00), ["dim"] = CreateColor(0.00, 0.35, 0.00)};
 			[1] = { ["bright"] = CreateColor(0.00, 0.65, 0.00), ["dim"] = CreateColor(0.00, 0.35, 0.00)};
-			[2] = { ["bright"] = CreateColor(0.00, 0.50, 0.90), ["dim"] = CreateColor(0.00, 0.25, 0.40)};
+			[2] = { ["bright"] = CreateColor(0.00, 0.45, 0.85), ["dim"] = CreateColor(0.00, 0.25, 0.40)};
 			[3] = { ["bright"] = CreateColor(0.65, 0.30, 0.80), ["dim"] = CreateColor(0.30, 0.15, 0.40)};
 			[4] = { ["bright"] = CreateColor(0.75, 0.40, 0.00), ["dim"] = CreateColor(0.40, 0.20, 0.00)};
 			[5] = { ["bright"] = CreateColor(0.80, 0.70, 0.45), ["dim"] = CreateColor(0.40, 0.35, 0.25)};
@@ -68,10 +68,10 @@ local ENUM_COLOR_OPTION = EnumUtil.MakeEnum(
 	);
 
 local TSP_FAKE_SET_VARIANTS = {
-	{ setID = -1 };
-	{ setID = -2 };
-	{ setID = -3 };
-	{ setID = -4 };
+	{ setID = -1, expansionID = 4 };
+	{ setID = -2, expansionID = 3 };
+	{ setID = -3, expansionID = 2 };
+	{ setID = -4, expansionID = 1 };
 };
 
 local TSP_FAKE_SET_SOURCE_COUNTS = {
@@ -102,35 +102,42 @@ local TSP_DEFAULTS = {
 }
 
 local SET_BAR_SPACING = 5;
+local SET_BAR_SPACING_TINY = 2;
+local MIN_SETS_FOR_TINY_BAR_SPACING = 10;
 local BAR_BLOCK_SPACING = 2;
 local BAR_BLOCK_SPACING_TINY = 1;
 
-local TSP_SetsDataProvider = nil;
+local NUM_COLORS = 6;
+local GREEN_COLOR_INDEX = 1;
+local BLIZZARD_GREEN_COLOR_INDEX = 2;
 
+TSP.SetsDataProvider = nil;
 
+TSP_CORE_MIXIN = {};
 
-local function WrapperGetSetSourceCounts(setID)
+function TSP:WrapperGetSetSourceCounts(setID)
 	if (setID < 0) then
 		local fakeSet = TSP_FAKE_SET_SOURCE_COUNTS[setID] or TSP_FAKE_SET_SOURCE_COUNTS[-1];
 		return fakeSet.numCollected, fakeSet.numTotal;
-	elseif(TSP_SetsDataProvider) then
-		return TSP_SetsDataProvider:GetSetSourceCounts(setID);
+	elseif(TSP.SetsDataProvider) then
+		return TSP.SetsDataProvider:GetSetSourceCounts(setID);
 	end
 
 	return 0, 0;
 end
 
-local function WrapperGetVariantSets(setID)
-	if (setID < 0) then
-		return TSP_FAKE_SET_VARIANTS;
-	elseif(TSP_SetsDataProvider) then
-		return TSP_SetsDataProvider:GetVariantSets(setID);
-	end
+-- Adds variants to a provided table so we can mess with order and remove items without changing the original table
+function TSP:WrapperGetVariantSets(setID, table)
+	wipe(table);
 
-	return {};
+	if (setID < 0) then
+		tAppendAll(table, TSP_FAKE_SET_VARIANTS);
+	elseif(TSP.SetsDataProvider) then
+		tAppendAll(table, TSP.SetsDataProvider:GetVariantSets(setID));
+	end
 end
 
-local function OnSetButtonInitialized(source, button, data)
+function TSP:OnSetButtonInitialized(button, data)
 	if (not data.setID) then return; end
 
 	if (not button.TSPBar) then
@@ -147,9 +154,9 @@ local function OnSetButtonInitialized(source, button, data)
 	button.TSPBar:SetupSetByID(data.setID, frameLevel);
 end
 
-local function GetVariantColors(variantData, index)
+function TSP:GetVariantColors(variantData, index)
 	if (TSP.settings.colorType == ENUM_COLOR_OPTION.uniform) then
-		local variantColorData = TSP_COLORS[1];
+		local variantColorData = TSP_COLORS[GREEN_COLOR_INDEX];
 		local unlockedR, unlockedG, unlockedB = variantColorData.bright:GetRGB();
 		local lockedR, lockedG, lockedB = variantColorData.dim:GetRGB();
 		return unlockedR, unlockedG, unlockedB, lockedR, lockedG, lockedB;
@@ -158,13 +165,15 @@ local function GetVariantColors(variantData, index)
 	local desc = variantData.description;
 	local colorIndex = TSP_DESC_TO_COLOR_INDEX[desc] or index;
 
-	local variantColorData = TSP_COLORS[colorIndex] or TSP_COLORS[1];
-
 	if (TSP.settings.colorType == ENUM_COLOR_OPTION.itemQuality) then
-		colorIndex = colorIndex + 1;
-		local color = ITEM_QUALITY_COLORS[colorIndex];
+		colorIndex = ((colorIndex-1) % NUM_COLORS) + BLIZZARD_GREEN_COLOR_INDEX;
+
+		local color = ITEM_QUALITY_COLORS[colorIndex] or ITEM_QUALITY_COLORS[BLIZZARD_GREEN_COLOR_INDEX];
 		return color.r, color.g, color.b, color.r * 0.5, color.g * 0.5, color.b * 0.5;
 	end
+
+	colorIndex = ((colorIndex-1) % NUM_COLORS) + GREEN_COLOR_INDEX;
+	local variantColorData = TSP_COLORS[colorIndex] or TSP_COLORS[GREEN_COLOR_INDEX];
 
 	local unlockedR, unlockedG, unlockedB = variantColorData.bright:GetRGB();
 	local lockedR, lockedG, lockedB = variantColorData.dim:GetRGB();
@@ -178,8 +187,8 @@ TSP_PREVIEW_BUTTON_MIXIN = {}
 function TSP_PREVIEW_BUTTON_MIXIN:OnLoad()
 	self.IconFrame.Icon:SetTexture(5740527);
 
-	local fakeData = { setID = -1 };
-	OnSetButtonInitialized(nil, self, fakeData);
+	local fakeData = TSP_FAKE_SET_VARIANTS[1];
+	TSP:OnSetButtonInitialized(self, fakeData);
 end
 
 function TSP_PREVIEW_BUTTON_MIXIN:OnClick()
@@ -203,7 +212,7 @@ function TPS_VARIANT_BAR_MIXIN:OnLoad()
 end
 
 function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing, frameLevel)
-	local numCollected, numTotal = WrapperGetSetSourceCounts(variantData.setID);
+	local numCollected, numTotal = TSP:WrapperGetSetSourceCounts(variantData.setID);
 
 	if (numCollected == numTotal) then
 		if (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.solid) then
@@ -211,7 +220,7 @@ function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing, frameLe
 			numTotal = 1;
 		elseif (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.hide) then
 			for _, block in ipairs(self.barBlocks) do
-				TSP_EventFrame.barBlockPool:Release(block);
+				TSP.barBlockPool:Release(block);
 			end
 			wipe(self.barBlocks);
 			return;
@@ -220,11 +229,11 @@ function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing, frameLe
 
 	for i = #self.barBlocks, numTotal + 1, -1 do
 		local block = self.barBlocks[i];
-		TSP_EventFrame.barBlockPool:Release(block);
+		TSP.barBlockPool:Release(block);
 		tremove(self.barBlocks, i);
 	end
 
-	local unlockedR, unlockedG, unlockedB, lockedR, lockedG, lockedB = GetVariantColors(variantData, index);
+	local unlockedR, unlockedG, unlockedB, lockedR, lockedG, lockedB = TSP:GetVariantColors(variantData, index);
 
 	local totalSpacing = spacing * (numTotal - 1);
 	local availableSpace = self:GetWidth() - totalSpacing;
@@ -234,7 +243,7 @@ function TPS_VARIANT_BAR_MIXIN:SetupVariant(variantData, index, spacing, frameLe
 	for i = 1, numTotal, 1 do
 		local frame = self.barBlocks[i];
 		if (not frame) then
-			frame = TSP_EventFrame.barBlockPool:Acquire();
+			frame = TSP.barBlockPool:Acquire();
 			frame:SetFrameLevel(frameLevel);
 			
 			tinsert(self.barBlocks, frame);
@@ -273,23 +282,30 @@ function TPS_MAINBAR_MIXIN:OnLoad()
 end
 
 function TPS_MAINBAR_MIXIN:SetupSetByID(setID, frameLevel)
-	-- We move the entries to our own list so that we don't affect the table in the dataprovider
-	wipe(self.variants);
-	tAppendAll(self.variants, WrapperGetVariantSets(setID));
+	TSP:WrapperGetVariantSets(setID, self.variants);
 
 	if (#self.variants == 0) then
-		local baseSet = TSP_SetsDataProvider:GetBaseSetByID(setID);
+		local baseSet = TSP.SetsDataProvider:GetBaseSetByID(setID);
 		tinsert(self.variants, baseSet);
 	end
 
 	-- In case of ENUM_EMPTY_OPTION.left we might want to act like there are more bars than we'll actually show
 	local numBarsToShow = #self.variants;
-	if (numBarsToShow == 0) then return; end
+
+	if (numBarsToShow == 0) then
+		for _, frame in ipairs(self.setFrames) do
+			TSP.variantBarPool:Release(frame);
+		end
+		wipe(self.setFrames);
+
+		self:Hide();
+		return;
+	end
 
 	if (TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.left or TSP.settings.handleEmpty == ENUM_EMPTY_OPTION.spread) then
 		for i = numBarsToShow, 1, -1 do
 			local variantData = self.variants[i];
-			local numCollected, numTotal = WrapperGetSetSourceCounts(variantData.setID);
+			local numCollected, numTotal = TSP:WrapperGetSetSourceCounts(variantData.setID);
 			if (numCollected == numTotal) then
 				tremove(self.variants, i);
 			end
@@ -302,11 +318,19 @@ function TPS_MAINBAR_MIXIN:SetupSetByID(setID, frameLevel)
 
 	for i = #self.setFrames, #self.variants + 1, -1 do
 		local frame = self.setFrames[i];
-		TSP_EventFrame.variantBarPool:Release(frame);
+		TSP.variantBarPool:Release(frame);
 		tremove(self.setFrames, i);
 	end
 
-	local totalSpacing = SET_BAR_SPACING * (numBarsToShow - 1);
+	if (#self.variants == 0) then
+		self:Hide();
+		return;
+	end
+
+	self:Show();
+
+	local barSpacing = numBarsToShow >= MIN_SETS_FOR_TINY_BAR_SPACING and SET_BAR_SPACING_TINY or SET_BAR_SPACING;
+	local totalSpacing = barSpacing * (numBarsToShow - 1);
 	local availableSpace = self:GetWidth() - totalSpacing;
 	local sizePerSetFrame = availableSpace / numBarsToShow;
 
@@ -315,7 +339,7 @@ function TPS_MAINBAR_MIXIN:SetupSetByID(setID, frameLevel)
 	for i = 1, #self.variants, 1 do
 		local frame = self.setFrames[i];
 		if (not frame) then
-			frame = TSP_EventFrame.variantBarPool:Acquire();
+			frame = TSP.variantBarPool:Acquire();
 			tinsert(self.setFrames, frame);
 		end
 
@@ -326,7 +350,7 @@ function TPS_MAINBAR_MIXIN:SetupSetByID(setID, frameLevel)
 		if (i == 1) then
 			frame:SetPoint("LEFT", self);
 		else
-			frame:SetPoint("LEFT", self.setFrames[i-1], "RIGHT", SET_BAR_SPACING, 0);
+			frame:SetPoint("LEFT", self.setFrames[i-1], "RIGHT", barSpacing, 0);
 		end
 
 		if (not TSP.settings.barOverHighlight) then
@@ -461,27 +485,57 @@ local function VariantBarResetFunc(pool, bar, new)
 	bar:Hide();
 end
 
-local TSP_EventFrame = CreateFrame("FRAME", "TSP_EventFrame"); 
-TSP_EventFrame:RegisterEvent("ADDON_LOADED");
-TSP_EventFrame:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
-TSP_EventFrame.variantBarPool = CreateSecureFramePool("Frame", TSP_EventFrame, "TSP_VariantBarTemplate", VariantBarResetFunc);
-TSP_EventFrame.barBlockPool = CreateSecureFramePool("Frame", TSP_EventFrame, "TSP_BarBlockTemplate", BarBlockResetFunc);
+function TSP_CORE_MIXIN:OnLoad()
+	self.externalsToLoad = {};
 
-function TSP_EventFrame:ADDON_LOADED(loaded)
-	if (loaded == "Blizzard_Collections") then
-		local scrollbox = WardrobeCollectionFrame.SetsCollectionFrame.ListContainer.ScrollBox;
-		scrollbox.view:RegisterCallback(ScrollBoxListViewMixin.Event.OnInitializedFrame, OnSetButtonInitialized, self);
+	self:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
+	self:RegisterEvent("ADDON_LOADED");
+	
+	TSP.variantBarPool = CreateSecureFramePool("Frame", self, "TSP_VariantBarTemplate", VariantBarResetFunc);
+	TSP.barBlockPool = CreateSecureFramePool("Frame", self, "TSP_BarBlockTemplate", BarBlockResetFunc);
+end
 
-		TSP_SetsDataProvider = CreateFromMixins(WardrobeSetsDataProviderMixin);
+function TSP_CORE_MIXIN:LoadExternal(addonName)
+	local external = self.externalsToLoad[addonName];
+	if (not external) then return; end
 
-		TSP_EventFrame:RegisterEvent("TRANSMOG_COLLECTION_UPDATED");
-		
-		TSP_EventFrame:UnregisterEvent("ADDON_LOADED");
+	self.externalsToLoad[addonName] = nil;
+	external:OnLoad(TSP);
+end
+
+function TSP_CORE_MIXIN:ProvideExternal(external)
+	if (not external or not external.GetAddonName) then return; end
+
+	local name = external:GetAddonName();
+	if (not name or name == "") then return; end
+
+	self.externalsToLoad[name] = external;
+
+	if (C_AddOns.IsAddOnLoaded(name)) then
+		self:LoadExternal(name);
 	end
 end
 
-function TSP_EventFrame:TRANSMOG_COLLECTION_UPDATED()
-	if TSP_SetsDataProvider then
-		TSP_SetsDataProvider:ClearSets();
+function TSP_CORE_MIXIN:ADDON_LOADED(loaded)
+	if (loaded == "Blizzard_Collections") then
+		local scrollbox = WardrobeCollectionFrame.SetsCollectionFrame.ListContainer.ScrollBox;
+		scrollbox.view:RegisterCallback(ScrollBoxListViewMixin.Event.OnInitializedFrame, function(source, button, data) TSP:OnSetButtonInitialized(button, data); end, self);
+
+		TSP.SetsDataProvider = CreateFromMixins(WardrobeSetsDataProviderMixin);
+
+		self:RegisterEvent("TRANSMOG_COLLECTION_UPDATED");
+	end
+
+	for name in pairs(self.externalsToLoad) do
+		if (name == loaded) then
+			self:LoadExternal(name);
+			break;
+		end
+	end
+end
+
+function TSP_CORE_MIXIN:TRANSMOG_COLLECTION_UPDATED()
+	if (TSP.SetsDataProvider) then
+		TSP.SetsDataProvider:ClearSets();
 	end
 end

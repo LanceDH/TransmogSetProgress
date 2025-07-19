@@ -8,6 +8,12 @@
 
 	<Script file="TransmogSetProgress.lua"/>
 	
+	<Frame name="TSP_CoreFrame" mixin="TSP_CORE_MIXIN">
+		<Scripts>
+			<OnLoad method="OnLoad" />
+		</Scripts>
+	</Frame>
+
 	<Frame name="TSP_MainBarTemplate" mixin="TPS_MAINBAR_MIXIN" virtual="true">
 		<Size x="50" y="4"/>
 		<Anchors>
