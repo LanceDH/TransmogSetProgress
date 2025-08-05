@@ -367,14 +367,17 @@ function TSP:OnEnable()
 	self.settings = self.db.global;
 	
 
-	if (self.settings.version < "11.1.01") then
-		if (self.settings.AlignLeft) then
-			
-			self.settings.handleEmpty = ENUM_EMPTY_OPTION.left;
-		end
+	local oldVersion = self.settings.version;
+	if (oldVersion) then
+		if (oldVersion < "11.1.01") then
+			if (self.settings.AlignLeft) then
+				
+				self.settings.handleEmpty = ENUM_EMPTY_OPTION.left;
+			end
 
-		self.settings.AlignLeft = nil;
-		self.settings.HideCompleted = nil;
+			self.settings.AlignLeft = nil;
+			self.settings.HideCompleted = nil;
+		end
 	end
 	
 	self.settings.version = C_AddOns.GetAddOnMetadata(_addonName, "version");

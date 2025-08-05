@@ -1,9 +1,9 @@
-﻿## Interface: 110107
+﻿## Interface: 110107, 110200
 ## Title: Transmog Set Progress
 ## Notes: Replaces the wardrobe set progress bars to show progress on the variations and the number of pieces.
 ## IconAtlas: transmog-nav-slot-shirt
 ## Author: LanceDH
-## Version: 11.1.02
+## Version: 11.2.01
 ## SavedVariables: TSPDB
 
 TransmogSetProgress.xml
