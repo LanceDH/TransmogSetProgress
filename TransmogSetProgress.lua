@@ -24,7 +24,7 @@ _L["SETTING_COLOR_ADDON_TOOLTIP"] = "Each variant has a muted version of the def
 _L["SETTING_COLOR_ITEM_QUALITY_LABEL"] = "Item Quality";
 _L["SETTING_COLOR_ITEM_QUALITY_TOOLTIP"] = "Uses the item quality colors as defined in your accessibility settings.";
 _L["SETTING_BAR_HIGHLIGHT_LABEL"] = "Bar Over Highlight";
-_L["SETTING_BAR_HIGHLIGHT_Tooltip"] = "Show the progress bar should over the button's highlight texture.";
+_L["SETTING_BAR_HIGHLIGHT_Tooltip"] = "Show the progress bar over the button's highlight texture.";
 
 local TSP_COLORS = {
 			[0]	= { ["bright"] = CreateColor(0.00, 0.65, 0.00), ["dim"] = CreateColor(0.00, 0.35, 0.00)};
