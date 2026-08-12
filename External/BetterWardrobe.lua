@@ -33,6 +33,8 @@ function ExternalMixin:Initialize(betterWardrobe, tsp)
 			originalWrapper(source, setID, table);
 			WardrobeSetsDataProviderMixin.SortSets(nil, table, true, true);
 		end
+
+	tsp.excludeHiddenUntilCollected = false;
 end
 
 function ExternalMixin:GetAddonName()

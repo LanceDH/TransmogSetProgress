@@ -1,10 +1,22 @@
-﻿## Interface: 120000
+﻿## Interface: 120100
 ## Title: Transmog Set Progress
 ## Notes: Replaces the wardrobe set progress bars to show progress on the variations and the number of pieces.
 ## IconAtlas: transmog-nav-slot-shirt
 ## Author: LanceDH
-## Version: 12.0.01
+## Version: 12.1.01
 ## SavedVariables: TSPDB
+
+## Category: Collections
+## Category-deDE: Kriegsmeutesammlungen
+## Category-esES: Colecciones de banda guerrera
+## Category-esMX: Colecciones de tropa
+## Category-frFR: Collections du bataillon
+## Category-itIT: Collezioni della Brigata
+## Category-koKR: 수집
+## Category-ptBR: Coleções do Bando de Guerra
+## Category-ruRU: Коллекции отряда
+## Category-zhCN: 战团藏品
+## Category-zhTW: 戰隊收藏
 
 TransmogSetProgress.xml
 External\External.xml

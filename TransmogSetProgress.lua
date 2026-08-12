@@ -112,6 +112,7 @@ local GREEN_COLOR_INDEX = 1;
 local BLIZZARD_GREEN_COLOR_INDEX = 2;
 
 TSP.SetsDataProvider = nil;
+TSP.excludeHiddenUntilCollected = true;
 
 TSP_CORE_MIXIN = {};
 
@@ -134,6 +135,15 @@ function TSP:WrapperGetVariantSets(setID, table)
 		tAppendAll(table, TSP_FAKE_SET_VARIANTS);
 	elseif(TSP.SetsDataProvider) then
 		tAppendAll(table, TSP.SetsDataProvider:GetVariantSets(setID));
+
+		if (TSP.excludeHiddenUntilCollected) then
+			for i = #table, 1, -1 do
+				local variant = table[i];
+				if (variant.hiddenUntilCollected and not variant.collected) then
+					tremove(table, i);
+				end
+			end
+		end
 	end
 end
 
